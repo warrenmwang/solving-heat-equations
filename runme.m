@@ -1,0 +1,2 @@
+x = Solver();
+x.main()
