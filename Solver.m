@@ -3,12 +3,15 @@ classdef Solver
         function approx = gaussianQuadrature(a, b, f, c, nodes, n)
             % numerically approximate integral of f from a to b
             % works for any range [a,b] due to change of vars
-            % a (int) - lower bound
-            % b (int) - upper bound
-            % f (function handle) - function to integrate
-            % c (list of floats) - special gaussian coefficients
-            % nodes (list of floats) - special gaussian node points
-            % n (int) - order of the gaussian quadrature
+            % Inputs:
+            %    a (int) - lower bound
+            %    b (int) - upper bound
+            %    f (function handle) - function to integrate
+            %    c (list of floats) - special gaussian coefficients
+            %    nodes (list of floats) - special gaussian node points
+            %    n (int) - order of the gaussian quadrature
+            % Outputs:
+            %    approx (float) - integral approximation value
             g = @(a,b,x) ((b-a)*x+(a+b))/2;
             approx = 0;
             for i = 1:n+1
@@ -19,13 +22,16 @@ classdef Solver
         
         function approx = compositeGaussianQuadrature(a,b,f,c,nodes,n,numSubIntervals)
             % approximates the integral for function f using gaussian quadratures
-            % a (int) - lower bound
-            % b (int) - upper bound
-            % f (function handle) - function to integrate
-            % c (list of floats) - special gaussian coefficients
-            % nodes (list of floats) - special gaussian node points
-            % n (int) - order of the gaussian quadrature
-            % numSubIntervals (int) - number of subintervals to divide (b-a) into
+            % Inputs:
+            %    a (int) - lower bound
+            %    b (int) - upper bound
+            %    f (function handle) - function to integrate
+            %    c (list of floats) - special gaussian coefficients
+            %    nodes (list of floats) - special gaussian node points
+            %    n (int) - order of the gaussian quadrature
+            %    numSubIntervals (int) - number of subintervals to divide (b-a) into
+            % Outputs:
+            %    approx (float) - integral approximation value
             approx = 0;
             integrationRange = (b-a)/numSubIntervals;
         
@@ -41,30 +47,48 @@ classdef Solver
         function y = L_0(i, x, h)
             % L^{i}_{0}
             % lagrange interpolation for the 0th (from top left to bottom right) piece of the tent/phi functions
-            % i (int) - tent function idx
-            % x (float) - input point to interpolate at
-            % h (float) - step size on interval
+            % Inputs:
+            %    i (int) - tent function idx
+            %    x (float) - input point to interpolate at
+            %    h (float) - step size on interval
+            % Outputs:
+            %    y (float) - interpolated value
             y = (x-i*h)/(-h);
         end
 
         function y = L_1(i, x, h)
             % L^{i}_{1}
             % lagrange interpolation for the 1th (from bottom left to top right) piece of the tent/phi functions
-            % i (int) - tent function idx
-            % x (float) - input point to interpolate at
-            % h (float) - step size on interval
+            % Inputs:
+            %    i (int) - tent function idx
+            %    x (float) - input point to interpolate at
+            %    h (float) - step size on interval
+            % Outputs:
+            %    y (float) - interpolated value
             y = (x-(i-1)*h)/h;
         end
 
         function y = L_0_prime(i, h)
-            % i (int) - tent function idx
-            % h (float) - step size on interval
+            % d/dx [L^{i}_{0}]
+            % derivative of lagrange interpolation for the 0th (from top left to bottom right) piece of the tent/phi functions
+            % Inputs:
+            %    i (int) - tent function idx
+            %    x (float) - input point to interpolate at
+            %    h (float) - step size on interval
+            % Outputs:
+            %    y (float) - interpolated value
             y = (1/h) - i;
         end
 
         function y = L_1_prime(i, h)
-            % i (int) - tent function idx
-            % h (float) - step size on interval
+            % d/dx [L^{i}_{1}]
+            % derivative of lagrange interpolation for the 1th (from bottom left to top right) piece of the tent/phi functions
+            % Inputs:
+            %    i (int) - tent function idx
+            %    x (float) - input point to interpolate at
+            %    h (float) - step size on interval
+            % Outputs:
+            %    y (float) - interpolated value
             y = (1/h) - (i-1);
         end
 
@@ -75,7 +99,8 @@ classdef Solver
             %    a (int) - lower bound of interval
             %    h (float) - step size
             %    x (float) - input to evaluate at
-            
+            % Outputs:
+            %    y (float) - tent func output
             if x >= a + (i*h) && x <= a + ((i+1)*h)
                 % in bounds, use left lagrange interpolation
                 y = Solver.L_1(i+1,x,h);
@@ -86,7 +111,7 @@ classdef Solver
                 return;
             else
                 % out of bounds
-                y = 0;
+                y = 0.0;
                 return;
             end
         end
@@ -116,7 +141,6 @@ classdef Solver
             n = 2;
                 
             % setup the matrix for solving u coeffs
-
             a11 = gaussianQuadrature(0.00, 0.25, @(x) L_1_prime(1,h)^2, c, nodes, n);
             a12 = gaussianQuadrature(0.25, 0.50, @(x) L_1_prime(2,h) * L_0_prime(2,h), c, nodes, n);
             a13 = 0;
@@ -133,20 +157,20 @@ classdef Solver
             b2 = -gaussianQuadrature(0.25, 0.50, @(x) L_1(2,x,h)*f(x), c, nodes, n) - gaussianQuadrature(0.50, 0.75, @(x) L_0(3,x,h)*f(x), c, nodes, n);
             b3 = -gaussianQuadrature(0.50, 0.75, @(x) L_1(3,x,h)*f(x), c, nodes, n) - gaussianQuadrature(0.75, 1.00, @(x) L_0(4,x,h)*f(x), c, nodes, n);
 
-            A = [ a11 a12 a13; ...
-                  a21 a22 a23; ...
-                  a31 a32 a33];
-
+            A = [a11 a12 a13; ...
+                 a21 a22 a23; ...
+                 a31 a32 a33];
             b = [b1 b2 b3]';
 
+            % solve
             sol = A\b;
-
             disp("Computed Coefficients [u_1, u_2, u_3]: ")
             disp(sol')
 
             % construct approximation vector/function
             u = @(x) sol(1)*Solver.tentFunction(0,a,h,x) + sol(2)*Solver.tentFunction(1,a,h,x) + sol(3)*Solver.tentFunction(2,a,h,x);
 
+            % test on some values
             disp("Test u(x) function:")
             testVals = 0:0.1:1;
             for i = 1:length(testVals)
