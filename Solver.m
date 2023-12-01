@@ -111,7 +111,7 @@ classdef Solver
                 a_i_plus_1 = gaussianQuadrature(i*h, (i+1)*h, @(x) L_1_prime(i+1,h) * L_0_prime(i+1,h), c,nodes,n);
             end
 
-            b = gaussianQuadrature((i-1)*h, i*h, @(x) L_1(i,x,h) * f(x), c,nodes,n) + gaussianQuadrature(i*h, (i+1)*h, @(x) L_0(i+1,x,h) * f(x), c,nodes,n);
+            b = -gaussianQuadrature((i-1)*h, i*h, @(x) L_1(i,x,h) * f(x), c,nodes,n) - gaussianQuadrature(i*h, (i+1)*h, @(x) L_0(i+1,x,h) * f(x), c,nodes,n);
 
             y = [a_i_minus_1, a_i, a_i_plus_1];
         end
@@ -142,10 +142,11 @@ classdef Solver
             format long;
 
             % solving
-            % \frac{\partial^2 u}{\partial x^2} + (-x^2 + 3x) = 0
+            % \frac{\partial^2 u}{\partial x^2} = f(x)
+            % \frac{\partial^2 u}{\partial x^2} = (x^2 - 3x)
 
             % function f in diff eq
-            f = @(x) -x^2 + 3*x;
+            f = @(x) x^2 - 3*x;
 
             numTentFunctions = 3;
             a = 0;
@@ -163,11 +164,12 @@ classdef Solver
             A = A(:, 2:end-1); % remove the first and last columns (extra padding)
             bs = bs'; % make b a column vector
 
-            disp("A = "); disp(A);
-            disp("b = "); disp(bs);
-
             sol = A\bs;
             Solver.plotSolution(sol,h)
+
+            disp("A = "); disp(A);
+            disp("b = "); disp(bs);
+            disp("coeffs = "); disp(sol);
         end
     end
 end
