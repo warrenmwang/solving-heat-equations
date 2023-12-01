@@ -20,29 +20,29 @@ classdef Solver
             approx = approx * (b-a)/2;
         end
         
-        function approx = compositeGaussianQuadrature(a,b,f,c,nodes,n,numSubIntervals)
-            % approximates the integral for function f using gaussian quadratures
-            % Inputs:
-            %    a (int) - lower bound
-            %    b (int) - upper bound
-            %    f (function handle) - function to integrate
-            %    c (list of floats) - special gaussian coefficients
-            %    nodes (list of floats) - special gaussian node points
-            %    n (int) - order of the gaussian quadrature
-            %    numSubIntervals (int) - number of subintervals to divide (b-a) into
-            % Outputs:
-            %    approx (float) - integral approximation value
-            approx = 0;
-            integrationRange = (b-a)/numSubIntervals;
+        % function approx = compositeGaussianQuadrature(a,b,f,c,nodes,n,numSubIntervals)
+        %     % approximates the integral for function f using gaussian quadratures
+        %     % Inputs:
+        %     %    a (int) - lower bound
+        %     %    b (int) - upper bound
+        %     %    f (function handle) - function to integrate
+        %     %    c (list of floats) - special gaussian coefficients
+        %     %    nodes (list of floats) - special gaussian node points
+        %     %    n (int) - order of the gaussian quadrature
+        %     %    numSubIntervals (int) - number of subintervals to divide (b-a) into
+        %     % Outputs:
+        %     %    approx (float) - integral approximation value
+        %     approx = 0;
+        %     integrationRange = (b-a)/numSubIntervals;
         
-            % note start with a = a
-            b = integrationRange;
-            for i = 1:numSubIntervals
-                approx = approx + Solver.gaussianQuadrature(a, b, f, c, nodes, n);
-                a = b;
-                b = b + integrationRange;
-            end
-        end
+        %     % note start with a = a
+        %     b = integrationRange;
+        %     for i = 1:numSubIntervals
+        %         approx = approx + Solver.gaussianQuadrature(a, b, f, c, nodes, n);
+        %         a = b;
+        %         b = b + integrationRange;
+        %     end
+        % end
 
         function y = L_0(i, x, h)
             % L^{i}_{0}
@@ -92,54 +92,31 @@ classdef Solver
             y = (1/h) - (i-1);
         end
 
-        function y = tentFunction(i, a, h, x)
-            % special tent / phi function
-            % Inputs:
-            %    i (int) - idx of the tent function
-            %    a (int) - lower bound of interval
-            %    h (float) - step size
-            %    x (float) - input to evaluate at
-            % Outputs:
-            %    y (float) - tent func output
-            if x >= a + (i*h) && x <= a + ((i+1)*h)
-                % in bounds, use left lagrange interpolation
-                y = Solver.L_1(i+1,x,h);
-                return;
-            elseif x > a + ((i+1)*h) && x <= a + ((i+2)*h)
-                % in bounds, use right lagrange interpolation
-                y = Solver.L_0(i+2,x,h);
-                return;
-            else
-                % out of bounds
-                y = 0.0;
-                return;
-            end
-        end
+        % function y = tentFunction(i, a, h, x)
+        %     % special tent / phi function
+        %     % Inputs:
+        %     %    i (int) - idx of the tent function
+        %     %    a (int) - lower bound of interval
+        %     %    h (float) - step size
+        %     %    x (float) - input to evaluate at
+        %     % Outputs:
+        %     %    y (float) - tent func output
+        %     if x >= a + (i*h) && x <= a + ((i+1)*h)
+        %         % in bounds, use left lagrange interpolation
+        %         y = Solver.L_1(i+1,x,h);
+        %         return;
+        %     elseif x > a + ((i+1)*h) && x <= a + ((i+2)*h)
+        %         % in bounds, use right lagrange interpolation
+        %         y = Solver.L_0(i+2,x,h);
+        %         return;
+        %     else
+        %         % out of bounds
+        %         y = 0.0;
+        %         return;
+        %     end
+        % end
 
-        function main()
-            format long;
-            gaussianQuadrature = @(a,b,f,c,nodes,n) Solver.gaussianQuadrature(a,b,f,c,nodes,n);
-            L_0_prime = @(i,h) Solver.L_0_prime(i,h);
-            L_1_prime = @(i,h) Solver.L_1_prime(i,h);
-            L_0 = @(i,x,h) Solver.L_0(i,x,h);
-            L_1 = @(i,x,h) Solver.L_1(i,x,h);
-
-            % solving
-            % \frac{\partial^2 u}{\partial x^2} + (-x^2 + 3x) = 0
-
-            % function f in diff eq
-            f = @(x) -x^2 + 3*x;
-
-            numTentFunctions = 3;
-            a = 0;
-            b = 1;
-            h = (b-a)/(numTentFunctions+1);
-
-            % gaussian quadrature values
-            c = [5/9, 8/9, 5/9];
-            nodes = [-sqrt(3/5), 0, sqrt(3/5)];
-            n = 2;
-                
+        function old_main()
             % setup the matrix for solving u coeffs
             a11 = gaussianQuadrature(0.00, 0.25, @(x) L_1_prime(1,h)^2, c, nodes, n);
             a12 = gaussianQuadrature(0.25, 0.50, @(x) L_1_prime(2,h) * L_0_prime(2,h), c, nodes, n);
@@ -167,15 +144,45 @@ classdef Solver
             disp("Computed Coefficients [u_1, u_2, u_3]: ")
             disp(sol')
 
-            % construct approximation vector/function
-            u = @(x) sol(1)*Solver.tentFunction(0,a,h,x) + sol(2)*Solver.tentFunction(1,a,h,x) + sol(3)*Solver.tentFunction(2,a,h,x);
+            x = 0:h:1;
+            y = [0 sol(1) sol(2) sol(3) 0];
+            fig = figure;
+            plot(x,y)
 
-            % test on some values
-            disp("Test u(x) function:")
-            testVals = 0:0.1:1;
-            for i = 1:length(testVals)
-                fprintf("u(%f) = %f\n", testVals(i), u(testVals(i)));
-            end
+            actual_sol = @(x) (x.^4 / 12) - (1/2).*x.^3 + (5/12).*x;
+            x = linspace(0,1);
+            fig = figure;
+            plot(x,actual_sol(x),'r')
+        end
+
+        function main()
+            clear; close all;
+            format long;
+            gaussianQuadrature = @(a,b,f,c,nodes,n) Solver.gaussianQuadrature(a,b,f,c,nodes,n);
+            L_0_prime = @(i,h) Solver.L_0_prime(i,h);
+            L_1_prime = @(i,h) Solver.L_1_prime(i,h);
+            L_0 = @(i,x,h) Solver.L_0(i,x,h);
+            L_1 = @(i,x,h) Solver.L_1(i,x,h);
+
+            % solving
+            % \frac{\partial^2 u}{\partial x^2} + (-x^2 + 3x) = 0
+
+            % function f in diff eq
+            f = @(x) -x^2 + 3*x;
+
+            numTentFunctions = 3;
+            a = 0;
+            b = 1;
+            h = (b-a)/(numTentFunctions+1);
+            fprintf("h=%f\n",h);
+
+            % gaussian quadrature values
+            c = [5/9, 8/9, 5/9];
+            nodes = [-sqrt(3/5), 0, sqrt(3/5)];
+            n = 2;
+            
+            %TODO: assemble connectivity table
+
         end
     end
 end
