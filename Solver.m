@@ -116,14 +116,17 @@ classdef Solver
             y = [a_i_minus_1, a_i, a_i_plus_1];
         end
 
-        function plotSolution(sol,h)
+        function plotSolution(sol,h,numTentFunctions)
             % sol (list of floats (col vec)) - solution is a list of coefficient values
             sol = sol';
 
             fig = figure;
 
             x = 0:h:1;
-            y = [0 sol(1) sol(2) sol(3) 0];
+            y = zeros(numTentFunctions+2,1);
+            for i = 1:numTentFunctions
+                y(i+1) = sol(i);
+            end
             plot(x,y)
             hold on;
 
@@ -131,7 +134,7 @@ classdef Solver
             x = linspace(0,1);
             plot(x,actual_sol(x),'r')
             legend('approx', 'actual');
-            title('Approx vs Actual')
+            title(sprintf('Approx (n=%d) vs Actual', numTentFunctions))
             xlabel('x')
             ylabel('y')
             hold off;
@@ -148,24 +151,25 @@ classdef Solver
             % function f in diff eq
             f = @(x) x^2 - 3*x;
 
-            numTentFunctions = 3;
+            numTentFunctions = 10;
             a = 0;
             b = 1;
             h = (b-a)/(numTentFunctions+1);
 
-            A = zeros(3,5);
-            bs = zeros(1,3);
-            for i = 1:3
+            A = zeros(numTentFunctions,numTentFunctions+2);
+            bs = zeros(1,numTentFunctions);
+
+            % each row corresponds to a tentFunction
+            for i = 1:numTentFunctions
                 [y,b] = Solver.createRow(i, h, f, numTentFunctions);
                 A(i,i:i+2) = y;
                 bs(i) = b;
             end
-            % finagling
             A = A(:, 2:end-1); % remove the first and last columns (extra padding)
             bs = bs'; % make b a column vector
 
             sol = A\bs;
-            Solver.plotSolution(sol,h)
+            Solver.plotSolution(sol,h,numTentFunctions)
 
             disp("A = "); disp(A);
             disp("b = "); disp(bs);
