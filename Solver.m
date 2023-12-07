@@ -116,28 +116,28 @@ classdef Solver
             y = [a_i_minus_1, a_i, a_i_plus_1];
         end
 
-        function plotSolution(sol,h,numTentFunctions)
-            % sol (list of floats (col vec)) - solution is a list of coefficient values
-            sol = sol';
+        function sol = solveF(a,b,f,n)
+            % solves function f
+            % with boundary conditions
+            % u(a) = u(b) = 0
+            % with n number of tent functions
+            % returns the solution vector sol, u's coefficients
 
-            fig = figure;
+            h = (b-a)/(n+1);
 
-            x = 0:h:1;
-            y = zeros(numTentFunctions+2,1);
-            for i = 1:numTentFunctions
-                y(i+1) = sol(i);
+            A = zeros(n,n+2);
+            bs = zeros(1,n);
+
+            % each row corresponds to a tentFunction
+            for i = 1:n
+                [y,b] = Solver.createRow(i, h, f, n);
+                A(i,i:i+2) = y;
+                bs(i) = b;
             end
-            plot(x,y)
-            hold on;
+            A = A(:, 2:end-1); % remove the first and last columns (extra padding)
+            bs = bs'; % make b a column vector
 
-            actual_sol = @(x) (x.^4 / 12) - (1/2).*x.^3 + (5/12).*x;
-            x = linspace(0,1);
-            plot(x,actual_sol(x),'r')
-            legend('approx', 'actual');
-            title(sprintf('Approx (n=%d) vs Actual', numTentFunctions))
-            xlabel('x')
-            ylabel('y')
-            hold off;
+            sol = A\bs;
         end
 
         function main()
@@ -151,29 +151,53 @@ classdef Solver
             % function f in diff eq
             f = @(x) x^2 - 3*x;
 
-            numTentFunctions = 10;
+            % show one good approximation
+            numTentFunctions = 20;
             a = 0;
             b = 1;
             h = (b-a)/(numTentFunctions+1);
-
-            A = zeros(numTentFunctions,numTentFunctions+2);
-            bs = zeros(1,numTentFunctions);
-
-            % each row corresponds to a tentFunction
+            
+            sol = Solver.solveF(a,b,f,numTentFunctions);
+            fig = figure;
+            x = 0:h:1;
+            y = zeros(numTentFunctions+2,1);
             for i = 1:numTentFunctions
-                [y,b] = Solver.createRow(i, h, f, numTentFunctions);
-                A(i,i:i+2) = y;
-                bs(i) = b;
+                y(i+1) = sol(i); % coeffs are the values
             end
-            A = A(:, 2:end-1); % remove the first and last columns (extra padding)
-            bs = bs'; % make b a column vector
+            plot(x,y)
+            hold on;
+            actual_sol = @(x) (x.^4 / 12) - (1/2).*x.^3 + (5/12).*x;
+            x = linspace(a,b);
+            plot(x,actual_sol(x),'r');
+            legend('Approximation', 'Actual');
+            title(sprintf('Approximation (n=%d) vs Actual', numTentFunctions));
+            xlabel('x');
+            ylabel('y');
+            hold off;
 
-            sol = A\bs;
-            Solver.plotSolution(sol,h,numTentFunctions)
-
-            disp("A = "); disp(A);
-            disp("b = "); disp(bs);
-            disp("coeffs = "); disp(sol);
+            % show convergence with increasing number of tent functions
+            % from little (bad approximation) to more (better
+            % approximation)
+            numTentFunctionsIter = 1:5;
+            fig = figure;
+            plot(x,actual_sol(x),'r');
+            hold on;
+            for i = 1:length(numTentFunctionsIter)
+               n = numTentFunctionsIter(i);
+               sol = Solver.solveF(a,b,f,n);
+               h = (b-a)/(n+1); 
+               x = a:h:b;
+               y = zeros(n+2,1);
+               for j = 1:n
+                   y(j+1) = sol(j); % coeffs are the values
+               end
+               plot(x,y);
+            end
+            legend('Actual', 'n=1', 'n=2', 'n=3', 'n=4', 'n=5');
+            title('Approximations vs Actual');
+            xlabel('x');
+            ylabel('y');
+            hold off;
         end
     end
 end
